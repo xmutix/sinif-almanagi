@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sınıf Almanakları</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 20px 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        /* Sınıf Seçme Butonları */
+        .class-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .class-btn {
+            background-color: white;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .class-btn:hover, .class-btn.active {
+            background-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Öğrenci/Toplu Foto Kartları Grid Yapısı */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            padding: 10px 0;
+        }
+
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 20px;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .photo-container {
+            width: 100%;
+            height: 160px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            cursor: pointer; /* Tıklanabilir olduğunu gösterir */
+        }
+
+        .photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .photo-container img:hover {
+            transform: scale(1.05);
+        }
+
+        .info {
+            padding: 12px 8px;
+        }
+
+        .no {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .name {
+            font-size: 0.95rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .no-selection {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 40px;
+            font-size: 1.1rem;
+        }
+
+        /* Büyütülmüş Resim Modal (Lightbox) Stili */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 75vh;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
+
+        .modal-caption {
+            color: white;
+            margin-top: 15px;
+            font-size: 1.2rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📖 Sınıf Almanakları</h1>
+    </header>
+
+    <div class="container">
+        <div class="class-selector" id="classSelector"></div>
+        <div id="studentGrid" class="grid"></div>
+        <div id="noSelectionMsg" class="no-selection">
+            Lütfen yukarıdan incelemek istediğiniz sınıfı seçin.
+        </div>
+    </div>
+
+    <!-- Resim Büyütme Penceresi (Modal) -->
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modalImg">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+
+    <script>
+        const students = [
+            // Normal Öğrenciler / Bireysel Kayıtlar
+            //{ sinif: "5/A", no: "105", ad: "Ayşe Demir", foto: "fotolar/105_Ayse_Demir.jpg" },
+            //{ sinif: "5/A", no: "112", ad: "Mehmet Kaya", foto: "fotolar/112_Mehmet_Kaya.jpg" },
+            // { sinif: "5/B", no: "201", ad: "Zeynep Çelik", foto: "fotolar/201_Zeynep_Celik.jpg" },
+            // { sinif: "5/B", no: "204", ad: "Can Arslan", foto: "fotolar/204_Can_Arslan.jpg" },
+            // { sinif: "6/A", no: "301", ad: "Elif Şahin", foto: "fotolar/301_Elif_Sahin.jpg" },
+
+            // TOPLU OKUL FOTOĞRAFLARI (Buraya istediğin kadar ekleyebilirsin)
+            { sinif: "Tüm Okul", ad: "5/A Sınıfı Toplu Fotoğraf", foto: "fotolar/5A.png" },
+            { sinif: "Tüm Okul", ad: "5/B Sınıfı Toplu Fotoğraf", foto: "fotolar/5B.jpg" },
+            { sinif: "Tüm Okul", ad: "5/C Sınıfı Toplu Fotoğraf", foto: "fotolar/5C.jpg" },
+            { sinif: "Tüm Okul", ad: "5/D Sınıfı Toplu Fotoğraf", foto: "fotolar/5D.jpg" },
+            { sinif: "Tüm Okul", ad: "6/A Sınıfı Toplu Fotoğraf", foto: "fotolar/6A.jpg" },
+            { sinif: "Tüm Okul", ad: "6/B Sınıfı Toplu Fotoğraf", foto: "fotolar/6B.jpg" },
+            { sinif: "Tüm Okul", ad: "6/C Sınıfı Toplu Fotoğraf", foto: "fotolar/6C.jpg" },
+            { sinif: "Tüm Okul", ad: "6/D Sınıfı Toplu Fotoğraf", foto: "fotolar/6D.jpg" },
+            { sinif: "Tüm Okul", ad: "6/E Sınıfı Toplu Fotoğraf", foto: "fotolar/6E.jpg" },
+            { sinif: "Tüm Okul", ad: "6/F Sınıfı Toplu Fotoğraf", foto: "fotolar/6F.jpg" },
+            { sinif: "Tüm Okul", ad: "7/A Sınıfı Toplu Fotoğraf", foto: "fotolar/7A.jpg" },
+            { sinif: "Tüm Okul", ad: "7/B Sınıfı Toplu Fotoğraf", foto: "fotolar/7B.jpg" },
+            { sinif: "Tüm Okul", ad: "7/C Sınıfı Toplu Fotoğraf", foto: "fotolar/7C.jpg" },
+            { sinif: "Tüm Okul", ad: "7/D Sınıfı Toplu Fotoğraf", foto: "fotolar/7D.jpg" },
+            { sinif: "Tüm Okul", ad: "7/E Sınıfı Toplu Fotoğraf", foto: "fotolar/7E.jpg" },
+            { sinif: "Tüm Okul", ad: "8/A Sınıfı Toplu Fotoğraf", foto: "fotolar/8A.jpg" },
+            { sinif: "Tüm Okul", ad: "8/B Sınıfı Toplu Fotoğraf", foto: "fotolar/8B.jpg" },
+            { sinif: "Tüm Okul", ad: "8/C Sınıfı Toplu Fotoğraf", foto: "fotolar/8C.jpg" },
+            { sinif: "Tüm Okul", ad: "8/D Sınıfı Toplu Fotoğraf", foto: "fotolar/8D.jpg" },
+            { sinif: "Tüm Okul", ad: "8/E Sınıfı Toplu Fotoğraf", foto: "fotolar/8E.jpg" },
+            
+
+            
+        ];
+
+        const classes = [...new Set(students.map(s => s.sinif))].sort();
+        const selectorContainer = document.getElementById('classSelector');
+        const gridContainer = document.getElementById('studentGrid');
+        const noSelectionMsg = document.getElementById('noSelectionMsg');
+
+        classes.forEach(sinifAdi => {
+            const btn = document.createElement('button');
+            btn.className = 'class-btn';
+            // Eğer sınıf adı "Tüm Okul" ise butonun üstünde şık dursun diye düzenleme yapabiliriz
+            btn.innerText = sinifAdi === "Tüm Okul" ? "🏫 Tüm Okul (Toplu)" : sinifAdi + " Sınıfı";
+            btn.onclick = () => showClass(sinifAdi, btn);
+            selectorContainer.appendChild(btn);
+        });
+
+        function showClass(selectedClass, clickedBtn) {
+            document.querySelectorAll('.class-btn').forEach(b => b.classList.remove('active'));
+            clickedBtn.classList.add('active');
+
+            noSelectionMsg.style.display = 'none';
+            gridContainer.innerHTML = '';
+
+            const filteredStudents = students.filter(s => s.sinif === selectedClass);
+
+            filteredStudents.forEach(stu => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                const noHTML = stu.no ? `<div class="no">No: ${stu.no}</div>` : '';
+                const nameHTML = stu.ad ? `<div class="name">${stu.ad}</div>` : '';
+                const modalCaption = stu.ad ? `${stu.no ? 'No: ' + stu.no + ' - ' : ''}${stu.ad}` : selectedClass;
+
+                card.innerHTML = `
+                    <div class="photo-container" onclick="openModal('${stu.foto}', '${modalCaption}')">
+                        <img src="${stu.foto}" alt="${stu.ad || ''}" onerror="this.src='https://via.placeholder.com/150?text=Foto+Yok'">
+                    </div>
+                    <div class="info">
+                        ${noHTML}
+                        ${nameHTML}
+                    </div>
+                `;
+                gridContainer.appendChild(card);
+            });
+        }
+
+        // Modal Açma Fonksiyonu
+        function openModal(imgSrc, captionText) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImg');
+            const caption = document.getElementById('modalCaption');
+
+            modal.style.display = 'flex';
+            modalImg.src = imgSrc;
+            caption.innerText = captionText;
+        }
+
+        // Modal Kapatma Fonksiyonu
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
